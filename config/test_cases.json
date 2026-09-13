@@ -1,0 +1,37 @@
+[
+  {
+    "id": "TC01",
+    "type": "direct_query",
+    "question": "Cocktail và Mocktail khác nhau như thế nào?",
+    "expected_behavior": "Agent trả lời trực tiếp mà không cần gọi Tool.",
+    "complexity": "Low"
+  },
+  {
+    "id": "TC02",
+    "type": "single_tool_query",
+    "question": "Cho tôi công thức Mojito.",
+    "expected_behavior": "Agent gọi recipe_search để tìm công thức Mojito.",
+    "complexity": "Medium"
+  },
+  {
+    "id": "TC03",
+    "type": "filtered_search",
+    "question": "Tìm cho tôi một Mocktail có bạc hà.",
+    "expected_behavior": "Agent sử dụng recipe_search với category Mocktail và ingredient mint.",
+    "complexity": "Medium"
+  },
+  {
+    "id": "TC04",
+    "type": "multi_step_action",
+    "question": "Tìm công thức Margarita và lưu nó vào danh sách yêu thích.",
+    "expected_behavior": "Agent gọi recipe_search, đọc Observation, sau đó gọi save_recipe nếu tìm thấy.",
+    "complexity": "High"
+  },
+  {
+    "id": "TC05",
+    "type": "edge_case",
+    "question": "Tìm công thức Dragon Fire Cocktail XYZ và lưu nó vào yêu thích.",
+    "expected_behavior": "Agent nhận NOT_FOUND và không gọi save_recipe.",
+    "complexity": "High"
+  }
+]

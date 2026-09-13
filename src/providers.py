@@ -25,6 +25,59 @@ class BaseLLMProvider:
     def generate_with_tools(self, prompt: str, tools_schema: List[Dict[str, Any]], system_prompt: str = "") -> Dict[str, Any]:
         raise NotImplementedError
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from tools import RECIPE_DATABASE
+except ModuleNotFoundError:
+    from src.tools import RECIPE_DATABASE
+
+def get_mock_recipe_content(drink_key: str, saved: bool = False) -> str:
+    """Tạo câu trả lời chi tiết gồm Tên, Nguyên liệu và Cách làm từ Database"""
+    key = drink_key.lower().strip()
+    data = RECIPE_DATABASE.get(key)
+    if not data:
+        for k, v in RECIPE_DATABASE.items():
+            if k in key or key in k:
+                data = v
+                break
+
+    if not data:
+        return f"Đã tìm thấy công thức cho '{drink_key}' trong cơ sở dữ liệu."
+
+    name = data.get("drink_name", drink_key)
+    cat = data.get("category", "Cocktail")
+    ingredients = data.get("ingredients", [])
+    instructions = data.get("instructions", [])
+
+    ings_str = "\n".join([f"- {ing}" for ing in ingredients])
+    steps_str = "\n".join([f"{idx+1}. {st}" for idx, st in enumerate(instructions)])
+
+    out = f"Dưới đây là công thức **{name}** ({cat}) chi tiết dành cho bạn:\n\n"
+    out += f"**Tên đồ uống:** {name} ({cat})\n\n"
+    out += f"**Nguyên liệu:**\n{ings_str}\n\n"
+    out += f"**Cách làm:**\n{steps_str}"
+    if saved:
+        out += f"\n\n**Trạng thái:** Đã lưu {name} vào danh sách yêu thích thành công!"
+    return out
+
+
+def get_all_mocktails_content(saved: bool = False) -> str:
+    """Tạo câu trả lời chi tiết cho danh sách 5 loại Mocktail nổi tiếng"""
+    from tools import RECIPE_DATABASE
+    mocktails = [v for v in RECIPE_DATABASE.values() if v.get("category", "").lower() == "mocktail"]
+    out = f"Dưới đây là công thức của **{len(mocktails)} loại Mocktail (đồ uống không cồn)** nổi tiếng nhất dành cho bạn:\n\n"
+    for idx, d in enumerate(mocktails):
+        name = d.get("drink_name")
+        ings = "\n".join([f"  - {i}" for i in d.get("ingredients", [])])
+        steps = "\n".join([f"  {s_idx+1}. {st}" for s_idx, st in enumerate(d.get("instructions", []))])
+        out += f"**{idx+1}. {name} (Mocktail)**\n\n"
+        out += f"**Nguyên liệu:**\n{ings}\n\n"
+        out += f"**Cách làm:**\n{steps}\n\n---\n\n"
+    if saved:
+        out += "**Trạng thái:** Đã lưu công thức Mocktail vào danh sách yêu thích thành công!"
+    return out
+
 
 class MockOfflineProvider(BaseLLMProvider):
     """Offline Mock Provider dùng để chạy thử mà không tốn API Key"""
@@ -37,7 +90,130 @@ class MockOfflineProvider(BaseLLMProvider):
     def generate_with_tools(self, prompt: str, tools_schema: List[Dict[str, Any]], system_prompt: str = "") -> Dict[str, Any]:
         prompt_lower = prompt.lower()
         
-        # Mô phỏng nhận diện intent gọi Tool
+        # Xác định tên đồ uống từ prompt (Margarita, Mojito, v.v.)
+        drink_name = "Margarita" if "margarita" in prompt_lower else ("Mojito" if "mojito" in prompt_lower and "virgin" not in prompt_lower else "")
+
+        # -------------------------------------------------------------
+        # STEP 3: Nếu đã thực hiện save_recipe và nhận Observation -> FINAL ANSWER
+        # -------------------------------------------------------------
+        if "save_recipe" in prompt_lower and ("tool observation" in prompt_lower or "observation" in prompt_lower):
+            if "5" in prompt_lower or ("mocktail" in prompt_lower and "margarita" not in prompt_lower):
+                content = get_all_mocktails_content(saved=True)
+            else:
+                name = drink_name or "Margarita"
+                content = get_mock_recipe_content(name, saved=True)
+            return {
+                "type": "text",
+                "content": content,
+                "thought": f"Đã lưu thành công công thức vào danh sách yêu thích. Trả về câu trả lời hoàn chỉnh cho người dùng."
+            }
+
+        # -------------------------------------------------------------
+        # STEP 2 (Multi-step): Sau khi recipe_search trả Observation thành công:
+        # Nếu user yêu cầu "lưu" -> Gọi save_recipe
+        # -------------------------------------------------------------
+        if "recipe_search" in prompt_lower and ("tool observation" in prompt_lower or "observation" in prompt_lower):
+            if "not_found" in prompt_lower:
+                missing_name = "Dragon Fire Cocktail XYZ" if "dragon fire" in prompt_lower else (drink_name or "đồ uống này")
+                return {
+                    "type": "text",
+                    "content": f"Không tìm thấy công thức cho '{missing_name}' trong cơ sở dữ liệu nên không thể lưu vào danh sách yêu thích.",
+                    "thought": "Công thức không tìm thấy (NOT_FOUND). Tuân thủ quy tắc không bịa đặt và không gọi save_recipe."
+                }
+            if "lưu" in prompt_lower:
+                if "5" in prompt_lower or ("mocktail" in prompt_lower and "margarita" not in prompt_lower):
+                    save_name = "Virgin Mojito"
+                else:
+                    save_name = drink_name or "Margarita"
+                return {
+                    "type": "tool_call",
+                    "tool_name": "save_recipe",
+                    "arguments": {"drink_name": save_name},
+                    "thought": f"Đã tìm thấy công thức. Người dùng yêu cầu lưu, tôi sẽ gọi save_recipe."
+                }
+            else:
+                if "5" in prompt_lower or ("loại" in prompt_lower and "mocktail" in prompt_lower):
+                    content = get_all_mocktails_content(saved=False)
+                elif "virgin mojito" in prompt_lower or ("mocktail" in prompt_lower and ("bạc hà" in prompt_lower or "mint" in prompt_lower)):
+                    content = get_mock_recipe_content("virgin mojito", saved=False)
+                elif "mojito" in prompt_lower:
+                    content = get_mock_recipe_content("mojito", saved=False)
+                elif "margarita" in prompt_lower:
+                    content = get_mock_recipe_content("margarita", saved=False)
+                elif "shirley" in prompt_lower:
+                    content = get_mock_recipe_content("shirley temple", saved=False)
+                elif "mocktail" in prompt_lower:
+                    content = get_all_mocktails_content(saved=False)
+                else:
+                    content = get_mock_recipe_content(drink_name or "mojito", saved=False)
+
+                return {
+                    "type": "text",
+                    "content": content,
+                    "thought": f"Đã nhận được kết quả Observation từ recipe_search. Trả về công thức chi tiết cho người dùng."
+                }
+
+        # -------------------------------------------------------------
+        # STEP 1: Nhận diện intent ban đầu
+        # -------------------------------------------------------------
+        # TC01: Hỏi chung / phân biệt Cocktail và Mocktail
+        if any(q in prompt_lower for q in ["khác nhau", "là gì", "phân biệt", "chào"]):
+            return {
+                "type": "text",
+                "content": "Cocktail là thức uống có cồn (thường pha từ rượu nền, nước trái cây, siro), trong khi Mocktail là đồ uống không chứa cồn (pha chế từ nước ép, soda, thảo mộc).",
+                "thought": "Câu hỏi chung về phân biệt Cocktail và Mocktail, trả lời trực tiếp mà không cần gọi Tool."
+            }
+
+        # TC05: Edge case tìm công thức không tồn tại
+        if "dragon fire" in prompt_lower or "dragonbreath" in prompt_lower:
+            return {
+                "type": "tool_call",
+                "tool_name": "recipe_search",
+                "arguments": {"drink_name": "Dragon Fire Cocktail XYZ"},
+                "thought": "Người dùng cần công thức Dragon Fire Cocktail XYZ trước khi lưu. Tôi sẽ tra cứu Dragon Fire Cocktail XYZ."
+            }
+
+        # TC03: Tìm kiếm theo bộ lọc category và ingredient
+        if "mocktail" in prompt_lower and ("bạc hà" in prompt_lower or "mint" in prompt_lower):
+            return {
+                "type": "tool_call",
+                "tool_name": "recipe_search",
+                "arguments": {"category": "Mocktail", "ingredient": "mint"},
+                "thought": "Người dùng muốn tìm Mocktail có bạc hà. Tôi sẽ gọi tool recipe_search với category='Mocktail' và ingredient='mint'."
+            }
+
+        # Tra cứu Mocktail nói chung hoặc 5 loại Mocktail
+        if "mocktail" in prompt_lower and "margarita" not in prompt_lower:
+            return {
+                "type": "tool_call",
+                "tool_name": "recipe_search",
+                "arguments": {"category": "Mocktail"},
+                "thought": "Người dùng yêu cầu tra cứu công thức Mocktail (đồ uống không cồn). Tôi sẽ gọi recipe_search với category='Mocktail'."
+            }
+
+        # TC02: Tra cứu đơn lẻ Mojito
+        if "mojito" in prompt_lower and "lưu" not in prompt_lower:
+            return {
+                "type": "tool_call",
+                "tool_name": "recipe_search",
+                "arguments": {"drink_name": "Mojito"},
+                "thought": "Người dùng muốn xem công thức Mojito. Tôi sẽ gọi tool recipe_search."
+            }
+
+        # TC04 / Mặc định: Tra cứu Margarita
+        name = drink_name or "Margarita"
+        if "lưu" in prompt_lower:
+            thought = f"Người dùng cần công thức {name} trước khi có thể lưu.\nTôi sẽ tra cứu {name}."
+        else:
+            thought = f"Người dùng yêu cầu tra cứu công thức {name}. Tôi sẽ tra cứu {name}."
+        return {
+            "type": "tool_call",
+            "tool_name": "recipe_search",
+            "arguments": {"drink_name": name},
+            "thought": thought
+        }
+
+        # Mô phỏng nhận diện intent cho Academic (tương thích ngược)
         if "sv2026001" in prompt_lower and "đặt lịch" in prompt_lower:
             return {
                 "type": "tool_call",
@@ -55,8 +231,8 @@ class MockOfflineProvider(BaseLLMProvider):
         else:
             return {
                 "type": "text",
-                "content": f"[Mock Agent Response]: Xin chào! Quy chế học vụ VinUni yêu cầu sinh viên tích lũy tối thiểu 120 tín chỉ và duy trì GPA trên 2.0 để tốt nghiệp.",
-                "thought": "Câu hỏi chung về quy chế học vụ, trả lời trực tiếp không cần gọi Tool."
+                "content": "Cocktail là thức uống có cồn (thường pha từ rượu nền, nước trái cây, siro), trong khi Mocktail là đồ uống không chứa cồn (pha chế từ nước ép, soda, thảo mộc).",
+                "thought": "Câu hỏi chung về phân biệt Cocktail và Mocktail, trả lời trực tiếp không cần gọi Tool."
             }
 
 
@@ -231,3 +407,6 @@ def get_llm_provider() -> BaseLLMProvider:
         return MockOfflineProvider()
     else:
         return MockOfflineProvider()
+
+# Alias for backwards compatibility
+get_provider = get_llm_provider

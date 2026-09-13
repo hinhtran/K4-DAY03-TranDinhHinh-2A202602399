@@ -1,118 +1,377 @@
 """
-🛠️ TOOL DEFINITIONS & EXECUTION BACKEND
-Mã nguồn chứa danh sách Tool Schemas (JSON Schema) và Execution Layer phục vụ cho MCP Server.
+🍸 Cocktail & Mocktail Tools
+
+Tools:
+1. recipe_search
+2. save_recipe
 """
 
 import json
 from typing import Dict, Any
 
-# ==============================================================================
-# 1. KHAI BÁO TOOL SCHEMAS CHUẨN NATIVE JSON SCHEMA (TASK 1.2)
-# ==============================================================================
+
+# ============================================================
+# TOOL SCHEMAS
+# ============================================================
 
 TOOLS_SCHEMA = [
-    # Tool 1: Đã được định nghĩa mẫu sẵn cho Học viên tham khảo
+
     {
-        "name": "academic_query",
-        "description": "Tra cứu hồ sơ và thông tin học vụ của sinh viên VinUni bằng mã sinh viên.",
+        "name": "recipe_search",
+        "description": (
+            "Tra cứu công thức Cocktail hoặc Mocktail "
+            "theo tên đồ uống, loại đồ uống hoặc nguyên liệu."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
-                "student_id": {
+                "drink_name": {
                     "type": "string",
-                    "description": "Mã sinh viên cần tra cứu (ví dụ: 'SV2026001')"
+                    "description": (
+                        "Tên đồ uống cần tìm, "
+                        "ví dụ Mojito hoặc Margarita."
+                    )
+                },
+                "category": {
+                    "type": "string",
+                    "description": (
+                        "Loại đồ uống: Cocktail hoặc Mocktail."
+                    )
+                },
+                "ingredient": {
+                    "type": "string",
+                    "description": (
+                        "Nguyên liệu muốn dùng để tìm công thức."
+                    )
                 }
             },
-            "required": ["student_id"]
+            "required": []
         }
     },
-    
-    # --------------------------------------------------------------------------
-    # TODO 1.2: HỌC VIÊN HOÀN THIỆN TOOL SCHEMA CHO 'schedule_appointment'
-    # 🎯 YÊU CẦU THIẾT KẾ SCHEMA (JSON SCHEMA STANDARD):
-    # 1. Tool dùng để đặt lịch hẹn tư vấn học vụ với Cố vấn học tập VinUni.
-    # 2. Thiết kế các tham số (properties) để LLM trích xuất:
-    #    - student_id (string): Mã sinh viên cần đặt lịch (ví dụ: 'SV2026001')
-    #    - datetime_str (string): Thời gian hẹn (ví dụ: '14:00 15/09/2026')
-    #    - advisor_name (string): Tên cố vấn học tập
-    # 3. Khai báo danh sách các trường bắt buộc (required).
-    # --------------------------------------------------------------------------
+
     {
-        "name": "schedule_appointment",
-        "description": "Đặt lịch hẹn tư vấn học vụ với Cố vấn học tập VinUni.",
+        "name": "save_recipe",
+        "description": (
+            "Lưu công thức Cocktail hoặc Mocktail "
+            "đã tìm thấy vào danh sách yêu thích."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
-                # TODO 1.2: Khai báo các thuộc tính tham số cho Tool tại đây...
+                "drink_name": {
+                    "type": "string",
+                    "description": (
+                        "Tên đồ uống cần lưu."
+                    )
+                }
             },
-            "required": [] # TODO 1.2: Khai báo danh sách các trường bắt buộc tại đây...
+            "required": ["drink_name"]
         }
     }
 ]
 
-# ==============================================================================
-# 2. MÔ PHỎNG DỮ LIỆU & HÀM THỰC THI TOOL (EXECUTION LAYER)
-# ==============================================================================
 
-MOCK_DATABASE = {
-    "SV2026001": {
-        "full_name": "Nguyễn Văn An",
-        "class": "AI-K4",
-        "gpa": 3.85,
-        "email": "an.nv@vinuni.edu.vn",
-        "status": "Đang học",
-        "advisor": "PGS.TS Nguyễn Văn A"
+# ============================================================
+# RECIPE DATABASE
+# ============================================================
+
+RECIPE_DATABASE = {
+
+    "mojito": {
+        "drink_name": "Mojito",
+        "category": "Cocktail",
+        "ingredients": [
+            "50ml white rum",
+            "25ml fresh lime juice",
+            "20ml sugar syrup",
+            "8-10 mint leaves",
+            "Soda water",
+            "Ice"
+        ],
+        "instructions": [
+            "Cho bạc hà và sugar syrup vào ly.",
+            "Thêm nước cốt chanh.",
+            "Dầm nhẹ bạc hà.",
+            "Thêm đá.",
+            "Thêm white rum.",
+            "Top soda.",
+            "Khuấy nhẹ."
+        ]
     },
-    "SV2026002": {
-        "full_name": "Trần Thị Bình",
-        "class": "AI-K4",
-        "gpa": 3.60,
-        "email": "binh.tt@vinuni.edu.vn",
-        "status": "Đang học",
-        "advisor": "TS. Lê Thị B"
+
+    "virgin mojito": {
+        "drink_name": "Virgin Mojito",
+        "category": "Mocktail",
+        "ingredients": [
+            "30ml fresh lime juice",
+            "20ml sugar syrup",
+            "8-10 mint leaves",
+            "Soda water",
+            "Ice"
+        ],
+        "instructions": [
+            "Cho bạc hà và syrup vào ly.",
+            "Thêm nước cốt chanh.",
+            "Dầm nhẹ.",
+            "Thêm đá.",
+            "Top soda.",
+            "Khuấy nhẹ."
+        ]
+    },
+
+    "margarita": {
+        "drink_name": "Margarita",
+        "category": "Cocktail",
+        "ingredients": [
+            "50ml tequila",
+            "25ml triple sec",
+            "25ml fresh lime juice",
+            "Ice",
+            "Salt"
+        ],
+        "instructions": [
+            "Làm ướt miệng ly bằng lime.",
+            "Nhúng miệng ly vào muối.",
+            "Cho tequila, triple sec và lime juice vào shaker.",
+            "Thêm đá.",
+            "Shake mạnh.",
+            "Strain vào ly."
+        ]
+    },
+
+    "shirley temple": {
+        "drink_name": "Shirley Temple",
+        "category": "Mocktail",
+        "ingredients": [
+            "Ginger ale",
+            "Grenadine",
+            "Lime juice",
+            "Ice",
+            "Maraschino cherry"
+        ],
+        "instructions": [
+            "Cho đá vào ly.",
+            "Thêm ginger ale.",
+            "Thêm grenadine.",
+            "Thêm lime juice.",
+            "Khuấy nhẹ.",
+            "Trang trí bằng cherry."
+        ]
+    },
+
+    "pina colada": {
+        "drink_name": "Piña Colada",
+        "category": "Cocktail",
+        "ingredients": [
+            "50ml white rum",
+            "50ml coconut cream",
+            "100ml pineapple juice",
+            "Ice"
+        ],
+        "instructions": [
+            "Cho nguyên liệu vào blender.",
+            "Thêm đá.",
+            "Blend đến khi mịn.",
+            "Rót ra ly."
+        ]
+    },
+
+    "virgin pina colada": {
+        "drink_name": "Virgin Piña Colada",
+        "category": "Mocktail",
+        "ingredients": [
+            "100ml pineapple juice (nước dứa)",
+            "50ml coconut cream (nước cốt dừa)",
+            "20ml sugar syrup",
+            "Ice"
+        ],
+        "instructions": [
+            "Cho nước dứa, nước cốt dừa và siro vào máy xay (blender).",
+            "Thêm đá viên.",
+            "Xay nhuyễn mịn.",
+            "Rót ra ly và trang trí lát dứa."
+        ]
+    },
+
+    "cinderella": {
+        "drink_name": "Cinderella",
+        "category": "Mocktail",
+        "ingredients": [
+            "50ml orange juice (nước cam)",
+            "50ml pineapple juice (nước dứa)",
+            "20ml fresh lemon juice (nước chanh)",
+            "10ml grenadine syrup",
+            "Soda water",
+            "Ice"
+        ],
+        "instructions": [
+            "Cho nước cam, dứa, chanh và grenadine vào shaker.",
+            "Thêm đá và lắc đều tay.",
+            "Rót ra ly có sẵn đá.",
+            "Top soda lên trên cùng và thưởng thức."
+        ]
+    },
+
+    "sunrise mocktail": {
+        "drink_name": "Sunrise Mocktail",
+        "category": "Mocktail",
+        "ingredients": [
+            "120ml orange juice (nước cam tươi)",
+            "20ml grenadine syrup",
+            "Soda water",
+            "Ice",
+            "Lát cam tươi trang trí"
+        ],
+        "instructions": [
+            "Cho đá viên vào ly cao.",
+            "Rót nước cam tươi vào ly.",
+            "Rót từ từ siro grenadine theo thành ly để tạo hiệu ứng phân tầng hoàng hôn.",
+            "Top nhẹ một lớp soda và trang trí lát cam tươi."
+        ]
     }
 }
 
 
-def execute_academic_query(student_id: str) -> str:
-    """Thực thi tra cứu học vụ theo mã sinh viên"""
-    student = MOCK_DATABASE.get(student_id.strip().upper())
-    if student:
+# ============================================================
+# SAVED RECIPES
+# ============================================================
+
+SAVED_RECIPES = []
+
+
+# ============================================================
+# TOOL 1: SEARCH
+# ============================================================
+
+def execute_recipe_search(
+    drink_name: str = "",
+    category: str = "",
+    ingredient: str = ""
+) -> str:
+
+    drink_name = drink_name.strip().lower()
+    category = category.strip().lower()
+    ingredient = ingredient.strip().lower()
+
+    # Search by exact name
+    if drink_name:
+
+        recipe = RECIPE_DATABASE.get(drink_name)
+
+        if recipe:
+            return json.dumps({
+                "status": "SUCCESS",
+                "data": recipe
+            }, ensure_ascii=False)
+
+    # Search by category / ingredient if provided
+    matches = []
+
+    if category or ingredient:
+        for recipe in RECIPE_DATABASE.values():
+
+            if category:
+                if recipe["category"].lower() != category:
+                    continue
+
+            if ingredient:
+                # Hỗ trợ cả tiếng Việt và tiếng Anh cho nguyên liệu phổ biến
+                synonyms = [ingredient]
+                if "bạc hà" in ingredient:
+                    synonyms.append("mint")
+                elif "chanh" in ingredient:
+                    synonyms.append("lime")
+                    synonyms.append("lemon")
+
+                ingredient_found = any(
+                    any(syn in item.lower() for syn in synonyms)
+                    for item in recipe["ingredients"]
+                )
+
+                if not ingredient_found:
+                    continue
+
+            matches.append(recipe)
+
+    if matches:
+
         return json.dumps({
             "status": "SUCCESS",
-            "student_id": student_id,
-            "data": student
-        }, ensure_ascii=False)
-    else:
-        return json.dumps({
-            "status": "NOT_FOUND",
-            "message": f"Không tìm thấy dữ liệu sinh viên có mã '{student_id}'"
+            "count": len(matches),
+            "data": matches
         }, ensure_ascii=False)
 
-
-def execute_schedule_appointment(student_id: str, datetime_str: str, advisor_name: str = "PGS.TS Nguyễn Văn A") -> str:
-    """Thực thi đặt lịch hẹn tư vấn học vụ"""
     return json.dumps({
-        "status": "SUCCESS",
-        "booking_id": f"BK-{student_id}-99",
-        "student_id": student_id,
-        "datetime": datetime_str,
-        "advisor": advisor_name,
-        "message": f"Đặt lịch thành công cho sinh viên {student_id} với {advisor_name} vào lúc {datetime_str}."
+        "status": "NOT_FOUND",
+        "message": "Không tìm thấy công thức phù hợp."
     }, ensure_ascii=False)
 
 
-# Router gọi tool thực tế
+# ============================================================
+# TOOL 2: SAVE
+# ============================================================
+
+def execute_save_recipe(drink_name: str) -> str:
+
+    key = drink_name.strip().lower()
+
+    recipe = RECIPE_DATABASE.get(key)
+
+    if not recipe:
+
+        return json.dumps({
+            "status": "NOT_FOUND",
+            "message": (
+                f"Không thể lưu '{drink_name}' "
+                "vì công thức không tồn tại."
+            )
+        }, ensure_ascii=False)
+
+    if recipe["drink_name"] not in SAVED_RECIPES:
+
+        SAVED_RECIPES.append(
+            recipe["drink_name"]
+        )
+
+    return json.dumps({
+        "status": "SUCCESS",
+        "message": (
+            f"Đã lưu {recipe['drink_name']} "
+            "vào danh sách yêu thích."
+        ),
+        "drink_name": recipe["drink_name"]
+    }, ensure_ascii=False)
+
+
+# ============================================================
+# TOOL ROUTER
+# ============================================================
+
 TOOL_ROUTER = {
-    "academic_query": execute_academic_query,
-    "schedule_appointment": execute_schedule_appointment
+    "recipe_search": execute_recipe_search,
+    "save_recipe": execute_save_recipe
 }
 
-def dispatch_tool_call(tool_name: str, arguments: Dict[str, Any]) -> str:
-    """Hàm trung chuyển thực thi tool"""
-    if tool_name in TOOL_ROUTER:
-        try:
-            return TOOL_ROUTER[tool_name](**arguments)
-        except Exception as e:
-            return json.dumps({"status": "EXECUTION_ERROR", "error": str(e)}, ensure_ascii=False)
-    return json.dumps({"status": "UNKNOWN_TOOL", "error": f"Tool '{tool_name}' không tồn tại!"}, ensure_ascii=False)
+
+def dispatch_tool_call(
+    tool_name: str,
+    arguments: Dict[str, Any]
+) -> str:
+
+    if tool_name not in TOOL_ROUTER:
+
+        return json.dumps({
+            "status": "UNKNOWN_TOOL",
+            "error": f"Tool '{tool_name}' không tồn tại."
+        }, ensure_ascii=False)
+
+    try:
+
+        return TOOL_ROUTER[tool_name](**arguments)
+
+    except Exception as e:
+
+        return json.dumps({
+            "status": "EXECUTION_ERROR",
+            "error": str(e)
+        }, ensure_ascii=False)

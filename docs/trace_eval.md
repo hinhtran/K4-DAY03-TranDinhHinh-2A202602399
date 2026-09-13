@@ -1,20 +1,21 @@
-# 📊 BÁO CÁO THU HOẠCH NGHIỆM THU BÀI LAB 3 (BƯỚC 3 — SUBMISSION ARTIFACT)
+# 📊 BÁO CÁO THU HOẠCH NGHIỆM THU BÀI LAB 3
 
-> **Họ và Tên Học viên:** [Điền Họ và Tên]  
-> **Mã Sinh Viên / Mã Học viên:** [Điền MSSV]  
-> **Chủ đề Lựa chọn:** [Điền tên chủ đề đã chọn từ docs/DANH_SACH_DE_TAI.md hoặc Đề tài Mở]  
+> **Họ và Tên Học viên:** Trần Đình Hinh
+> **Mã Sinh Viên / Mã Học viên:** 2A202602399 
+> **Chủ đề:** Cocktail & Mocktail Recipe Agent 
+> **Chủ đề Lựa chọn:** Trợ lý ReAct hỗ trợ tìm kiếm, kiểm tra và lưu công thức Cocktail/Mocktail dựa trên yêu cầu của người dùng. Agent tự quyết định khi nào cần tra cứu công thức và khi nào cần thực hiện hành động lưu công thức, thông qua MCP Tools.
 
 ---
 
 ## 1. BẢNG CHẤM ĐIỂM AGENTIC FIT SCORING MATRIX (ĐÁNH GIÁ CHỦ ĐỀ)
 
-| Tiêu chí Đánh giá | Mức độ (1 - 5) | Giải trình chi tiết lý do chọn điểm |
-| :--- | :---: | :--- |
-| **1. Multi-step Reasoning** | / 5 | Bài toán có yêu cầu chia nhỏ nhiều bước suy luận nối tiếp nhau không? |
-| **2. Tool Interaction** | / 5 | Hệ thống có cần kết nối với MCP Server / Cơ sở dữ liệu bên ngoài không? |
-| **3. Dynamic Decision** | / 5 | Bước tiếp theo có phụ thuộc vào kết quả quan sát bước trước không? |
-| **4. Long Horizon Goal** | / 5 | Hệ thống có phải giữ mục tiêu xuyên suốt qua nhiều lượt xử lý không? |
-| **TỔNG ĐIỂM AGENTIC FIT** | **/ 20** | *Nếu tổng điểm > 12/20: Bài toán rất phù hợp triển khai Agentic System.* |
+| Tiêu chí | Điểm | Giải trình |
+|---|---|---|
+| Multi-step Reasoning | 4/5 | Một số yêu cầu cần tra cứu rồi thực hiện hành động tiếp theo. |
+| Tool Interaction | 5/5 | Agent sử dụng recipe_search và save_recipe thông qua MCP. |
+| Dynamic Decision | 5/5 | Kết quả recipe_search quyết định Agent có tiếp tục gọi save_recipe hay không |
+| Long Horizon Goal | 2/5 | Nhiệm vụ thường hoàn thành trong một phiên với vài bước. |
+| **Tổng** | **16/20** | Phù hợp triển khai ReAct Agent. |
 
 ---
 
@@ -28,20 +29,44 @@ Dán 1 đoạn trích xuất log tiêu biểu từ file `docs/trace_waterfall.js
 [
   {
     "step": 1,
+    "query": "Tìm Margarita và lưu vào yêu thích.",
     "action_type": "TOOL_EXECUTION",
-    "tool_name": "academic_query",
+    "thought": "Cần tìm công thức trước.",
+    "tool_name": "recipe_search",
     "arguments": {
-      "student_id": "SV2026001"
+      "drink_name": "Margarita"
     },
     "observation": {
       "status": "SUCCESS",
-      "student_id": "SV2026001",
       "data": {
-        "full_name": "Nguyễn Văn An",
-        "gpa": 3.85
+        "drink_name": "Margarita",
+        "category": "Cocktail"
       }
     },
-    "latency_ms": 120.5
+    "latency_ms": 542.31
+  },
+  {
+    "step": 2,
+    "query": "Tìm Margarita và lưu vào yêu thích.",
+    "action_type": "TOOL_EXECUTION",
+    "thought": "Công thức đã tìm thấy, cần lưu theo yêu cầu.",
+    "tool_name": "save_recipe",
+    "arguments": {
+      "drink_name": "Margarita"
+    },
+    "observation": {
+      "status": "SUCCESS",
+      "message": "Đã lưu Margarita vào danh sách yêu thích."
+    },
+    "latency_ms": 311.42
+  },
+  {
+    "step": 3,
+    "query": "Tìm Margarita và lưu vào yêu thích.",
+    "action_type": "FINAL_ANSWER",
+    "thought": "Đã hoàn thành mục tiêu.",
+    "output": "Đã tìm thấy công thức Margarita và lưu vào danh sách yêu thích.",
+    "latency_ms": 8.2
   }
 ]
 ```
@@ -50,10 +75,10 @@ Dán 1 đoạn trích xuất log tiêu biểu từ file `docs/trace_waterfall.js
 
 ## 3. TỔNG KẾT KẾT QUẢ NGHIỆM THU & NỘP BÀI
 
-- [ ] Đã điền API Key thật trong `.env` và xác nhận Agent chạy mượt mà trên LLM API thật (Gemini/OpenAI).
-- **Tổng số Test Cases đã chạy thành công:** ___ / 5 test cases.
-- **Số lượt gọi Tool qua MCP Server chính xác:** ___ lượt.
-- **Kết quả đẩy Repo nộp bài:** [ ] Đã Commit và Push mã nguồn thành công lên GitHub cá nhân.
+- [x] Đã điền API Key thật trong `.env` và xác nhận Agent chạy mượt mà trên LLM API thật (Gemini/OpenAI).
+- **Tổng số Test Cases đã chạy thành công:** 5 / 5 test cases.
+- **Số lượt gọi Tool qua MCP Server chính xác:** 5 lượt.
+- **Kết quả đẩy Repo nộp bài:** [x] Đã Commit và Push mã nguồn thành công lên GitHub cá nhân.
 
 ---
 

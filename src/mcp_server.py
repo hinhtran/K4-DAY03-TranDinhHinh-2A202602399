@@ -4,9 +4,15 @@ Mô phỏng kiến trúc MCP Server (Client-Server Architecture) cung cấp côn
 """
 
 import json
+import os
 import sys
 from typing import Dict, Any, List
-from tools import TOOLS_SCHEMA, dispatch_tool_call
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from tools import TOOLS_SCHEMA, dispatch_tool_call
+except ModuleNotFoundError:
+    from src.tools import TOOLS_SCHEMA, dispatch_tool_call
 
 if sys.stdout.encoding != 'utf-8':
     try:
@@ -14,55 +20,63 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-class MCPAcademicServer:
+class MCPCocktailServer:
     """
     Giả lập MCP Server tuân thủ chuẩn giao thức Model Context Protocol
     """
-    def __init__(self, server_name: str = "vinuni-academic-mcp-server"):
-        self.server_name = server_name
+    def __init__(self, server_name: str = "cocktail-mocktail-mcp-server"):
+        self.server_name = "cocktail-mocktail-mcp-server"
         self.version = "2026.1.0"
         
     def list_tools(self) -> List[Dict[str, Any]]:
         """Trả về danh sách các Tools chuẩn giao thức MCP"""
         return TOOLS_SCHEMA
         
-    def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        [TASK 2.1] HỌC VIÊN HOÀN THIỆN HÀM THỰC THI TOOL TRÊN MCP SERVER
-        Thực thi request gọi Tool theo chuẩn MCP JSON-RPC
-        """
-        # --------------------------------------------------------------------------
-        # TODO 2.1: HỌC VIÊN HOÀN THIỆN HÀM GỌI TOOL CHUẨN MCP JSON-RPC
-        # 🎯 YÊU CẦU THỰC THI THUẬT TOÁN:
-        # 1. Gọi hàm dispatch_tool_call(tool_name, arguments) để lấy chuỗi JSON kết quả từ Tool Router.
-        # 2. Chuyển đổi chuỗi JSON kết quả thành Python Dictionary (dùng json.loads).
-        # 3. Đóng gói phản hồi và trả về Dict theo đúng chuẩn giao thức MCP JSON-RPC 2.0:
-        #    - Các trường bắt buộc: "jsonrpc": "2.0", "server": self.server_name, "tool": tool_name, "result": content
-        # --------------------------------------------------------------------------
-        return {}
+    def call_tool(
+        self,
+        tool_name: str,
+        arguments: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        content = dispatch_tool_call(
+            tool_name,
+            arguments
+        )
+
+        result = json.loads(content)
+
+        return {
+            "jsonrpc": "2.0",
+            "server": self.server_name,
+            "tool": tool_name,
+            "result": result
+        }
+
+
+# Tương thích ngược với các module khác
+MCPAcademicServer = MCPCocktailServer
 
 
 if __name__ == "__main__":
     print("==========================================================")
-    print("🔌 KIỂM THỬ ĐỘC LẬP MCP SERVER (vinuni-academic-mcp-server)")
+    print("🔌 KIỂM THỬ ĐỘC LẬP MCP SERVER (cocktail-mocktail-mcp-server)")
     print("==========================================================")
     
-    server = MCPAcademicServer()
+    server = MCPCocktailServer()
     tools = server.list_tools()
     print(f"✅ Khởi tạo thành công MCP Server: {server.server_name} (Version: {server.version})")
     print(f"📦 Số lượng Tools công bố: {len(tools)}")
     
     # Kiểm tra trạng thái TODO 1.2 (Tool Schema)
-    sched_tool = next((t for t in tools if t.get("name") == "schedule_appointment"), None)
-    if sched_tool and not sched_tool.get("parameters", {}).get("properties"):
-        print("⏳ [TODO 1.2]: Tool 'schedule_appointment' chưa được định nghĩa properties trong 'src/tools.py'.")
+    test_tool = next((t for t in tools if t.get("name") in ["recipe_search", "save_recipe"]), None)
+    if test_tool and not test_tool.get("parameters", {}).get("properties"):
+        print("⏳ [TODO 1.2]: Tool chưa được định nghĩa properties trong 'src/tools.py'.")
     else:
-        print("✅ [TODO 1.2]: Tool 'schedule_appointment' đã có schema đầy đủ.")
+        print(f"✅ [TODO 1.2]: Tool '{test_tool.get('name') if test_tool else ''}' đã có schema đầy đủ.")
 
     # Kiểm tra trạng thái TODO 2.1 (call_tool)
-    test_result = server.call_tool("academic_query", {"student_id": "SV2026001"})
+    test_result = server.call_tool("recipe_search", {"drink_name": "Mojito"})
     if not test_result:
         print("⏳ [TODO 2.1]: Hàm call_tool() đang trả về rỗng. Học viên hãy hoàn thiện TODO 2.1 trong 'src/mcp_server.py'!")
     else:
-        print(f"✅ [TODO 2.1]: Test dispatch tool 'academic_query' thành công:")
+        print(f"✅ [TODO 2.1]: Test dispatch tool 'recipe_search' thành công:")
         print(f"   Phản hồi JSON-RPC: {json.dumps(test_result, ensure_ascii=False)}")

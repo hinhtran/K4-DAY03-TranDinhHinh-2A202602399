@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🍸 Mixology ReAct Agent — AI Chatbot Cocktail & Mocktail</title>
+  <meta name="description" content="Trợ lý AI Cocktail & Mocktail tích hợp Model Context Protocol (MCP) và vòng lặp suy luận ReAct đa bước.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍸</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- LEFT SIDEBAR: TEST SUITE & MCP STATUS -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-group">
+          <div class="logo-badge">🍸</div>
+          <div>
+            <h1 class="brand-title">Mixology AI</h1>
+            <div class="brand-sub">ReAct Agent &bull; MCP Day 03</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-scroll">
+        <!-- 5 Test Cases Section -->
+        <div>
+          <div class="section-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            5 Test Cases Nghiệm Thu
+          </div>
+          <div class="tc-list" id="testCasesList">
+            <!-- Dynamic Rendered TC Cards -->
+          </div>
+        </div>
+
+        <!-- MCP Server Information -->
+        <div>
+          <div class="section-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            MCP Server (Giao thức JSON-RPC)
+          </div>
+          <div class="mcp-box">
+            <div class="mcp-pill">
+              <span class="mcp-dot"></span>
+              cocktail-mocktail-mcp-server
+            </div>
+            <p style="font-size: 11.5px; color: var(--text-muted); line-height: 1.4;">
+              Cung cấp các công cụ chuẩn hóa theo kiến trúc Model Context Protocol:
+            </p>
+            <div class="tool-tags">
+              <span class="tool-tag">recipe_search</span>
+              <span class="tool-tag">save_recipe</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Saved Recipes List -->
+        <div>
+          <div class="section-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            Đã Lưu (Saved Recipes)
+          </div>
+          <div class="saved-list" id="savedRecipesList">
+            <div class="saved-item">
+              <span>❤️</span> Margarita (Đã lưu qua save_recipe)
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CHAT INTERACTION AREA -->
+    <main class="main-content">
+      <!-- Top Navigation -->
+      <header class="topbar">
+        <div class="mode-switcher">
+          <button class="mode-btn active" id="btnModeReact" onclick="setMode('react')">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            ReAct Agent (Cấp 3)
+          </button>
+          <button class="mode-btn" id="btnModeBaseline" onclick="setMode('baseline')">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            Chatbot Baseline (Cấp 2)
+          </button>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="action-icon-btn" onclick="openTraceModal()">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Xem Waterfall Trace
+          </button>
+          <button class="action-icon-btn" onclick="clearChat()">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Xóa Chat
+          </button>
+        </div>
+      </header>
+
+      <!-- Chat Messages Scroll Container -->
+      <div class="chat-scroll" id="chatContainer">
+        <!-- Initial Welcome Message from Bot -->
+        <div class="message-row bot">
+          <div class="avatar bot">🍸</div>
+          <div class="message-bubble">
+            <p><strong>Xin chào! Tôi là Trợ lý Cocktail & Mocktail ReAct Agent.</strong></p>
+            <p style="margin-top: 6px; color: var(--text-muted); font-size: 13.5px;">
+              Tôi được trang bị giao thức <strong>Model Context Protocol (MCP)</strong> kết nối trực tiếp với 2 công cụ thời gian thực: <code>recipe_search</code> (tra cứu công thức) và <code>save_recipe</code> (lưu công thức yêu thích).
+            </p>
+            <p style="margin-top: 8px; font-size: 13.5px;">
+              💡 <em>Bạn có thể chọn 1 trong 5 Test Cases bên trái để chạy thử nghiệm ReAct đa bước hoặc tự nhập câu hỏi bên dưới!</em>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Chat Input Area -->
+      <footer class="bottom-bar">
+        <form class="input-wrapper" id="chatForm" onsubmit="handleUserSubmit(event)">
+          <input 
+            type="text" 
+            id="queryInput" 
+            class="query-input" 
+            placeholder="Hỏi công thức Cocktail/Mocktail (Ví dụ: 'Tìm Margarita và lưu vào danh sách yêu thích')..." 
+            autocomplete="off"
+            required
+          >
+          <button type="submit" id="sendBtn" class="send-btn" title="Gửi yêu cầu">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </button>
+        </form>
+
+        <div class="suggestion-chips">
+          <div class="chip" onclick="quickFill('Tìm Margarita và lưu vào danh sách yêu thích.')">
+            🔥 TC04: Tìm & lưu Margarita (Đa bước)
+          </div>
+          <div class="chip" onclick="quickFill('Cho tôi công thức Mojito.')">
+            🌿 TC02: Công thức Mojito
+          </div>
+          <div class="chip" onclick="quickFill('Tìm cho tôi một Mocktail có bạc hà.')">
+            🍃 TC03: Mocktail có bạc hà
+          </div>
+          <div class="chip" onclick="quickFill('Cocktail và Mocktail khác nhau như thế nào?')">
+            ❓ TC01: Phân biệt Cocktail/Mocktail
+          </div>
+          <div class="chip" onclick="quickFill('Tìm công thức Dragon Fire Cocktail XYZ và lưu nó vào yêu thích.')">
+            ⚠️ TC05: Thức uống không tồn tại (Edge case)
+          </div>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- TRACE INSPECTOR MODAL -->
+  <div class="modal-overlay" id="traceModal" onclick="closeTraceModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>📊</span>
+          <span>Waterfall Trace Inspector (Observability)</span>
+        </div>
+        <button class="close-btn" onclick="closeTraceModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre id="traceJsonViewer">Đang tải trace log...</pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
